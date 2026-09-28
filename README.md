@@ -1,11 +1,12 @@
 # Telia TV (Estonia) on a rooted LG webOS 5 TV
 
-Telia Eesti has **no official Telia TV app for LG webOS**, so there is nothing to sideload or unlock by changing region. This repo is a homebrew wrapper that loads the teliatv.ee web player in a webOS app. Whether it works depends on two things you can check in about 30 minutes:
+Telia Eesti has **no official Telia TV app for LG webOS**, so there is nothing to sideload or unlock by changing region. This repo is a homebrew wrapper that loads the teliatv.ee web player in a webOS app. Whether it works depends on three things you can check in about 30 minutes:
 
 1. Does the player's JavaScript run on Chromium 68 (webOS 5's engine, never updated by LG)?
 2. Does Telia's license server accept the TV's Widevine or PlayReady CDM?
+3. Can the TV decode the streams the player picks (codecs, profiles, DRM robustness level)?
 
-If either fails, the dependable option is an Android TV / Google TV device on HDMI (Chromecast with Google TV, Google TV Streamer, or Telia's rented Android box), which Telia officially supports.
+If any of these fails, the dependable option is an Android TV / Google TV device on HDMI (Chromecast with Google TV, Google TV Streamer, or Telia's rented Android box), which Telia officially supports.
 
 > Unofficial and unsupported. Using it breaks no rule we found (it shows Telia's own web player with your own login), but Telia forbids VPNs, rooting may affect your LG warranty, and you get no support. Don't redistribute the IPK with Telia branding.
 
