@@ -1,0 +1,14 @@
+{
+  "id": "ee.local.teliatv",
+  "version": "0.1.0",
+  "vendor": "local",
+  "type": "web",
+  "main": "index.html",
+  "title": "Telia TV (web)",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "resolution": "1920x1080",
+  "inspectable": true,
+  "disableBackHistoryAPI": true,
+  "noSplashOnLaunch": true
+}
