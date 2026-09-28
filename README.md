@@ -66,7 +66,7 @@ Set `DEVICE=name` to use a device name other than `tvroot`.
 
 ### UA header variant
 
-The user script only spoofs `navigator.userAgent` in JavaScript. If the site checks the HTTP header server-side, add this to `appinfo.json`. Note that `netcast` trust level removes `window.PalmServiceBridge`:
+The user script only spoofs `navigator.userAgent` in JavaScript. If the site checks the HTTP header server-side, add this to `appinfo.json`. The key name follows the webosbrew appinfo.json page (`vendorExtensions`, plural); if the header doesn't change on your firmware, check the request in DevTools. Note that `netcast` trust level removes `window.PalmServiceBridge`:
 
 ```json
 "trustLevel": "netcast",
@@ -94,6 +94,8 @@ The block is not bulletproof, so also:
 scripts/deploy.sh remove
 scripts/update-block.sh off TV_IP   # only if you want updates back
 ```
+
+To fully restore updates, also remove the router-side block: delete `router/lg-update-block.dnsmasq.conf` from your dnsmasq / Pi-hole config and reload DNS, and remove any manually added `snu|su|su-dev|su-ssl.lge.com` entries from the TV's `/etc/hosts`.
 
 If you changed the LG Services Country while experimenting, restore the original value and reboot. Changing region is not useful here: no store has a Telia app that works with an Estonian account on webOS 5.
 
