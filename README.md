@@ -1,1 +1,114 @@
-# TeliaTV-WebOS5
+# Telia TV (Estonia) on a rooted LG webOS 5 TV
+
+Telia Eesti has **no official Telia TV app for LG webOS**, so there is nothing to sideload or unlock by changing region. This repo is a homebrew wrapper that loads the teliatv.ee web player in a webOS app. Whether it works depends on two things you can check in about 30 minutes:
+
+1. Does the player's JavaScript run on Chromium 68 (webOS 5's engine, never updated by LG)?
+2. Does Telia's license server accept the TV's Widevine or PlayReady CDM?
+
+If either fails, the dependable option is an Android TV / Google TV device on HDMI (Chromecast with Google TV, Google TV Streamer, or Telia's rented Android box), which Telia officially supports.
+
+> Unofficial and unsupported. Using it breaks no rule we found (it shows Telia's own web player with your own login), but Telia forbids VPNs, rooting may affect your LG warranty, and you get no support. Don't redistribute the IPK with Telia branding.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `teliatv-wrapper/` | The webOS app (`appinfo.json`, redirect `index.html`, `webOSUserScripts/userScript.js`) |
+| `scripts/package.sh` | Build the IPK into `dist/` |
+| `scripts/deploy.sh` | `setup`, `install`, `launch`, `inspect`, `remove` via ares-cli |
+| `scripts/recon.sh` | Phase 0 checks over SSH |
+| `scripts/update-block.sh` | Toggle the Homebrew Channel firmware-update block |
+| `probe/eme-probe.js` | DevTools snippet: Widevine / PlayReady availability |
+| `router/lg-update-block.dnsmasq.conf` | Router-level block of the LG update hosts |
+
+## Prerequisites
+
+- Rooted webOS 5.x TV with Homebrew Channel and SSH (key auth) enabled.
+- **Do not install LG's Developer Mode app** on a rooted TV; it can break the system. Homebrew Channel provides the same features.
+- PC with Node and `npm install -g @webos-tools/cli` (`ares -V` should work). A Chromium 68 build is recommended for DevTools.
+- A phone with Smart-ID or Mobiil-ID to log in.
+
+## Usage
+
+```bash
+# 0. Before building anything: search "Telia" in the TV's Content Store in case an app has launched.
+
+# 1. Recon (system info, region settings, opens the built-in browser on teliatv.ee)
+scripts/recon.sh TV_IP
+
+# 2. Register the TV (root SSH on port 22, not the Developer Mode account on 9922)
+scripts/deploy.sh setup TV_IP ~/.ssh/id_rsa
+
+# 3. Build, install, launch, debug
+scripts/deploy.sh install
+scripts/deploy.sh launch
+scripts/deploy.sh inspect      # opens DevTools; or browse to http://TV_IP:9998
+```
+
+Set `DEVICE=name` to use a device name other than `tvroot`.
+
+### What the built-in browser test tells you
+
+| Result | Meaning |
+|---|---|
+| Blank page or stuck spinner | The bundle probably fails to parse on Chrome 68 (`?.` / `??` syntax) |
+| "Browser not supported" banner | UA sniffing; the wrapper's JS-level UA spoof may help |
+| Login and guide work, playback fails | Past the JS problem; check DRM |
+| Playback works | Use the wrapper for remote keys and a launcher tile |
+
+## Debugging checklist (DevTools)
+
+1. **Console:** `SyntaxError: Unexpected token ?` or `.` in a vendor bundle is the modern-syntax wall. Polyfills cannot fix syntax; the only workaround is a transpiling proxy (not included, see issue 5).
+2. **DRM:** paste `probe/eme-probe.js` into the console. Then play a channel with the Network tab open and note the manifest type (`.mpd` or `.m3u8`), the license URL and the license POST status. A 4xx from the license server means Telia is refusing this CDM, and no client-side trick will fix that.
+3. **Media:** `MEDIA_ERR_DECODE` or `MediaKeySession.update()` failures point to codec or robustness problems.
+4. **Login:** Smart-ID / Mobiil-ID confirm on your phone, so any browser that renders the page works.
+5. **Navigation:** arrow keys and OK arrive as normal keyboard events, but a desktop UI may still need the Magic Remote pointer.
+
+### UA header variant
+
+The user script only spoofs `navigator.userAgent` in JavaScript. If the site checks the HTTP header server-side, add this to `appinfo.json`. Note that `netcast` trust level removes `window.PalmServiceBridge`:
+
+```json
+"trustLevel": "netcast",
+"vendorExtensions": { "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" }
+```
+
+## Keeping root: blocking firmware updates
+
+```bash
+scripts/update-block.sh on TV_IP       # sets the Homebrew Channel flag and reboots
+scripts/update-block.sh status TV_IP   # flag + /etc/hosts sinkholes
+scripts/update-block.sh off TV_IP      # rollback (reboots)
+```
+
+The block is not bulletproof, so also:
+
+- add `router/lg-update-block.dnsmasq.conf` to your router's dnsmasq / Pi-hole config;
+- turn off automatic updates in the TV menu (Settings > General > About this TV);
+- **don't block all of `lge.com`**: that breaks the Content Store, LG login and time sync;
+- check CanI.RootMy.TV for your model and firmware before accepting any update.
+
+## Rollback
+
+```bash
+scripts/deploy.sh remove
+scripts/update-block.sh off TV_IP   # only if you want updates back
+```
+
+If you changed the LG Services Country while experimenting, restore the original value and reboot. Changing region is not useful here: no store has a Telia app that works with an Estonian account on webOS 5.
+
+## Why not the other approaches
+
+- **Official Telia webOS IPK:** doesn't exist for Estonia. Telia Play LT (needs webOS 25) and Telia Play SE are separate services with separate accounts.
+- **Region change:** pointless, and can leave apps showing "not available in current country".
+- **Casting:** Telia EE doesn't document it and webOS 5 has no Google Cast receiver.
+- **Android APK:** webOS can't run APKs.
+
+## Caveats
+
+- Which DRM the Telia player uses is undocumented, and its policy toward a TV CDM on a desktop web page is unknown; you can only test it.
+- Remote key codes, the `com.webos.app.browser` launch parameters and the `getSystemInfo` keys are homebrew conventions; verify them on your firmware.
+- Expect breakage whenever Telia redeploys the player.
+- No one on webosbrew, openlgtv or digi-tv.ee is known to have wrapped Telia TV, so you may be first.
+
+Background research and sources: see issue 1 and the original feasibility report.
