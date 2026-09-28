@@ -10,6 +10,7 @@ Experimental personal tool: it breaks whenever Telia ships a new build.
 import hashlib
 import os
 import subprocess
+from collections import OrderedDict
 
 ESBUILD = os.environ.get("ESBUILD", "esbuild")
 TARGET = os.environ.get("TRANSPILE_TARGET", "chrome68")
@@ -17,7 +18,23 @@ TARGET = os.environ.get("TRANSPILE_TARGET", "chrome68")
 HOSTS = tuple(h.strip().lower() for h in os.environ.get("TRANSPILE_HOSTS", "teliatv.ee").split(",") if h.strip())
 MAX_BYTES = int(os.environ.get("TRANSPILE_MAX_BYTES", str(20 * 1024 * 1024)))
 
-_cache = {}
+CACHE_MAX_BYTES = int(os.environ.get("TRANSPILE_CACHE_BYTES", str(64 * 1024 * 1024)))
+
+# LRU of transpile results (None = esbuild failed), bounded by total output bytes.
+_cache = OrderedDict()
+_cache_bytes = 0
+
+
+def _cache_put(key, out):
+    global _cache_bytes
+    size = len(out) if out else 0
+    if size > CACHE_MAX_BYTES:
+        return  # too big to cache; recompute next time
+    _cache[key] = out
+    _cache_bytes += size
+    while _cache_bytes > CACHE_MAX_BYTES and _cache:
+        _, old = _cache.popitem(last=False)
+        _cache_bytes -= len(old) if old else 0
 
 
 def host_allowed(host):
@@ -34,6 +51,7 @@ def transpile(source):
     """Return down-levelled source, or None if esbuild fails."""
     key = hashlib.sha256(source).hexdigest()
     if key in _cache:
+        _cache.move_to_end(key)
         return _cache[key]
     try:
         proc = subprocess.run(
@@ -43,8 +61,20 @@ def transpile(source):
     except (OSError, subprocess.TimeoutExpired):
         return None
     out = proc.stdout if proc.returncode == 0 and proc.stdout else None
-    _cache[key] = out
+    _cache_put(key, out)
     return out
+
+
+def is_script_path(path):
+    return path.split("?", 1)[0].lower().endswith((".js", ".mjs"))
+
+
+def request(flow):
+    """Drop conditional headers so a cached original script is re-fetched in full (200, not 304)."""
+    req = flow.request
+    if req.method == "GET" and host_allowed(req.pretty_host) and is_script_path(req.path):
+        req.headers.pop("if-none-match", None)
+        req.headers.pop("if-modified-since", None)
 
 
 def response(flow):
