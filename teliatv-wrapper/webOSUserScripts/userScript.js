@@ -37,7 +37,7 @@
     if (ev.keyCode === 461 && history.length > 1) { history.back(); ev.preventDefault(); return; }
     var v = document.querySelector('video');
     if ((ev.keyCode === 415 || ev.keyCode === 19) && v) {
-      if (v.paused) { v.play(); } else { v.pause(); }
+      if (ev.keyCode === 415) { v.play(); } else { v.pause(); }
       ev.preventDefault();
       return;
     }
