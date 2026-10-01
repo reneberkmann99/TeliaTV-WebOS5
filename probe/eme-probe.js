@@ -1,14 +1,30 @@
 // Paste into the DevTools console of the running wrapper (ares-inspect).
-// Reports Widevine / PlayReady availability via EME.
+// Reports which Widevine / PlayReady video robustness levels EME grants.
 (function () {
-  var cfg = [{
-    initDataTypes: ['cenc'],
-    videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.640028"', robustness: '' }],
-    audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }]
-  }];
-  ['com.widevine.alpha', 'com.microsoft.playready'].forEach(function (ks) {
-    navigator.requestMediaKeySystemAccess(ks, cfg)
-      .then(function (a) { console.log('OK', ks, a.getConfiguration()); })
-      .catch(function (e) { console.log('NO', ks, e.name); });
+  if (!navigator.requestMediaKeySystemAccess) {
+    console.log('NO EME: navigator.requestMediaKeySystemAccess is missing (insecure context or disabled)');
+    return;
+  }
+  function cfg(robustness) {
+    return [{
+      initDataTypes: ['cenc'],
+      videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.640028"', robustness: robustness }],
+      // Audio stays at default robustness: hardware levels are usually video-only, and EME rejects the
+      // whole config if audio can't meet them, which would hide the video result.
+      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: '' }]
+    }];
+  }
+  var probes = [
+    ['com.widevine.alpha', ['', 'SW_SECURE_CRYPTO', 'SW_SECURE_DECODE', 'HW_SECURE_CRYPTO', 'HW_SECURE_DECODE', 'HW_SECURE_ALL']],
+    ['com.microsoft.playready', ['']],
+    ['com.microsoft.playready.recommendation', ['', '2000', '3000']]
+  ];
+  probes.forEach(function (p) {
+    p[1].forEach(function (r) {
+      var label = p[0] + (r ? ' ' + r : ' (any robustness)');
+      navigator.requestMediaKeySystemAccess(p[0], cfg(r))
+        .then(function () { console.log('OK ', label); })
+        .catch(function (e) { console.log('NO ', label, e.name); });
+    });
   });
 })();

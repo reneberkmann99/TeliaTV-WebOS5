@@ -2,23 +2,48 @@
 
 Only useful if DevTools shows `SyntaxError: Unexpected token ?` (or similar) from Telia's bundles. Experimental personal tool: it breaks whenever Telia ships a new build, and it is more intrusive than simply viewing the service, so don't expect it to be maintainable.
 
-`transpile_addon.py` is a [mitmproxy](https://mitmproxy.org) addon. It runs `esbuild --target=chrome68` on JavaScript responses from allow-listed hosts (default `teliatv.ee` and its subdomains). Everything else (HTML, JSON, license requests, media segments) passes through untouched, and if esbuild fails the original script is served.
+`transpile_addon.py` is a [mitmproxy](https://mitmproxy.org) addon. It runs `esbuild --target=chrome68` on JavaScript responses from allow-listed hosts (default `teliatv.ee` and its subdomains). esbuild runs without blocking the proxy, results are cached, and if esbuild fails or times out the original script is served. Everything else (HTML, JSON, license requests, media segments) passes through untouched.
 
-## Run (on a LAN machine, e.g. a Raspberry Pi)
+## Run (on a Linux machine on your LAN, e.g. a Raspberry Pi)
 
 ```bash
 pip install mitmproxy && npm i -g esbuild
-mitmdump -s proxy/transpile_addon.py --listen-port 8080
 python3 proxy/test_transpile.py   # quick self-test
 ```
 
-Environment: `TRANSPILE_HOSTS` (comma-separated host suffixes), `TRANSPILE_TARGET` (default `chrome68`), `TRANSPILE_MAX_BYTES`, `TRANSPILE_CACHE_BYTES` (LRU cache size, default 64 MiB), `ESBUILD` (binary path).
+Environment: `TRANSPILE_HOSTS` (comma-separated host suffixes), `TRANSPILE_TARGET` (default `chrome68`), `TRANSPILE_TIMEOUT` (seconds, default 60), `TRANSPILE_JOBS` (max concurrent esbuild runs, default min(4, CPUs)), `TRANSPILE_MAX_BYTES`, `TRANSPILE_CACHE_BYTES` (LRU cache size, default 64 MiB), `ESBUILD` (binary path).
 
-## Point the TV at it
+## Route the TV through it
 
-1. Set the TV's Wi-Fi/Ethernet proxy to `PROXY_HOST:8080` (Settings > Network), or route the wrapper's traffic through it another way.
-2. mitmproxy re-signs HTTPS with its own CA (`~/.mitmproxy/mitmproxy-ca-cert.pem`). The TV must trust that CA; on a rooted set, add it to the system trust store. Remove it when you're done.
-3. **Clear the app's cache first.** The broken bundle you saw before enabling the proxy may already be in the WebView cache, and a normal reload can reuse it without contacting the proxy. Remove and reinstall the wrapper (`scripts/deploy.sh remove`, then `install`) or otherwise clear its app data. The addon also strips `If-None-Match` / `If-Modified-Since` from `.js` requests so revalidation returns a full body instead of a 304.
-4. Reload the wrapper and re-check the DevTools console.
+LG webOS has no HTTP proxy setting, so use **transparent mode** with the proxy machine as the TV's gateway:
 
-Caveats: syntax is down-levelled but missing runtime APIs still need polyfills (see the wrapper's user script); certificate pinning or Content-Security-Policy / subresource-integrity checks on Telia's side can also block rewritten scripts. Only use this for your own account and device.
+1. On the proxy machine (replace `eth0` with its LAN interface):
+   ```bash
+   sudo sysctl -w net.ipv4.ip_forward=1
+   sudo sysctl -w net.ipv4.conf.all.send_redirects=0
+   sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80  -j REDIRECT --to-port 8080
+   sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 443 -j REDIRECT --to-port 8080
+   mitmdump --mode transparent --showhost --listen-port 8080 \
+     --allow-hosts '(^|\.)teliatv\.ee(:443)?$' -s proxy/transpile_addon.py
+   ```
+   `--allow-hosts` makes mitmproxy intercept only teliatv.ee; all other traffic (DRM licenses, CDNs, LG services) is forwarded without TLS interception.
+   **Keep the two host lists in sync:** a host must be in both `--allow-hosts` and `TRANSPILE_HOSTS` to be transpiled. For example, if Telia's scripts come from `cdn.example.net`:
+   ```bash
+   TRANSPILE_HOSTS=teliatv.ee,cdn.example.net mitmdump --mode transparent --showhost --listen-port 8080 \
+     --allow-hosts '(^|\.)(teliatv\.ee|cdn\.example\.net)(:443)?$' -s proxy/transpile_addon.py
+   ```
+2. On the TV: Settings > Network > (Wi-Fi or wired) > Edit, switch to manual IP, and set **Gateway** to the proxy machine's IP (keep IP, subnet and DNS as before).
+3. **Certificate (unverified):** mitmproxy re-signs teliatv.ee with its own CA (`~/.mitmproxy/mitmproxy-ca-cert.pem`), and the TV's web engine must trust it or every teliatv.ee request fails with a certificate error. How webOS's WebAppManager loads trusted CAs has not been verified; the root filesystem is read-only, so adding a CA likely means bind-mounting a modified CA bundle at boot. Without a trusted CA this proxy cannot work.
+4. **Clear the cache:** the broken bundle may already be cached. Open DevTools (`scripts/deploy.sh inspect`), tick **Network > Disable cache**, use **Application > Clear storage** (this also removes service workers), then reload. The addon strips `If-None-Match` / `If-Modified-Since` on teliatv.ee GETs so revalidation returns a full body instead of a 304.
+5. Re-check the DevTools console.
+
+To undo: restore the TV's network settings to automatic, then delete the iptables rules (`sudo iptables -t nat -F PREROUTING` if you have no other rules there).
+
+## Limitations
+
+- Only external script files are transpiled. Inline `<script>` blocks in Telia's HTML pass through unchanged, so modern syntax there still fails.
+- For classic (non-module) scripts, esbuild declares its helper variables at the top level (e.g. `var _a, _k; _k = new WeakMap()`), which become shared globals across all transpiled scripts. Bundled code (webpack/Vite) is unaffected; separately transpiled classic scripts with same-named private class fields could clash.
+- Syntax is down-levelled but missing runtime APIs still need polyfills (see the wrapper's user script).
+- Certificate pinning, Content-Security-Policy or subresource-integrity checks on Telia's side can block rewritten scripts.
+
+Only use this for your own account and device.
