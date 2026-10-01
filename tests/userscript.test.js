@@ -89,6 +89,17 @@ test('fromEntries', () => {
   const closing = { [Symbol.iterator]() { return { next: () => ({ value: 'bad', done: false }), return: () => { closed = true; return {}; } }; } };
   assert.throws(() => Object.fromEntries(closing), TypeError);
   assert.ok(closed, 'iterator closed on error');
+  let nextReads = 0;
+  const nextOnce = { [Symbol.iterator]() {
+    let i = 0;
+    return { get next() { nextReads++; return () => (i++ < 2 ? { value: ['n' + i, i], done: false } : { done: true }); } };
+  } };
+  assert.deepStrictEqual(Object.fromEntries(nextOnce), { n1: 1, n2: 2 });
+  assert.strictEqual(nextReads, 1, 'next read once');
+  let closedOnNext = false;
+  const throwingNext = { [Symbol.iterator]() { return { next() { throw new Error('boom'); }, return() { closedOnNext = true; return {}; } }; } };
+  assert.throws(() => Object.fromEntries(throwingNext), /boom/);
+  assert.ok(closedOnNext, 'iterator closed when next() throws');
   const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
   assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
   assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });

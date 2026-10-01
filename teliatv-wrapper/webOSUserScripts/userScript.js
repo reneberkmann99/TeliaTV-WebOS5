@@ -60,18 +60,21 @@
     var method = entries == null ? undefined : entries[Symbol.iterator];
     if (typeof method !== 'function') { throw new TypeError('Object.fromEntries requires an iterable'); }
     var it = method.call(entries);
+    var next = it.next;  // read once, like native
     var o = {};
-    var step;
-    while (!(step = it.next()).done) {
-      var p = step.value;
-      try {
+    try {
+      for (;;) {
+        var step = next.call(it);
+        if (step.done) { break; }
+        var p = step.value;
         if (Object(p) !== p) { throw new TypeError('Object.fromEntries: entry is not an object'); }
         // defineProperty, not assignment: a "__proto__" key must become an own property, not set the prototype.
         Object.defineProperty(o, p[0], { value: p[1], writable: true, enumerable: true, configurable: true });
-      } catch (e) {
-        if (typeof it['return'] === 'function') { it['return'](); }  // close the iterator, like native
-        throw e;
       }
+    } catch (e) {
+      // Close the iterator on any error, including from next(); this matches Chrome's native behaviour.
+      try { if (typeof it['return'] === 'function') { it['return'](); } } catch (ignored) {}
+      throw e;
     }
     return o;
   });
