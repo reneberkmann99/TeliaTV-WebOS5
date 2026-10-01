@@ -15,11 +15,16 @@
     }
   }
   define(window, 'globalThis', window);
+  // Native-style ToLength: negative, NaN and missing lengths become 0 (no unsigned wrap-around).
+  function toLength(x) {
+    var n = Math.trunc(Number(x));
+    return n > 0 ? Math.min(n, 9007199254740991) : 0;
+  }
   // Appends the elements of `src` to `out`, flattening nested arrays up to `depth`.
   // Holes are skipped, as in the native flat().
   function flatInto(out, src, depth) {
     // Length is read once, as in the native method, so a source that grows during the loop can't loop forever.
-    for (var i = 0, len = src.length >>> 0; i < len; i++) {
+    for (var i = 0, len = toLength(src.length); i < len; i++) {
       if (!(i in src)) { continue; }
       var v = src[i];
       if (depth > 0 && Array.isArray(v)) { flatInto(out, v, depth - 1); } else { out.push(v); }
@@ -31,9 +36,10 @@
     return flatInto([], Object(this), d > 0 ? d : 0);
   });
   define(Array.prototype, 'flatMap', function (fn, thisArg) {
+    if (typeof fn !== 'function') { throw new TypeError('flatMap callback must be a function'); }
     var src = Object(this);
     var out = [];
-    for (var i = 0, len = src.length >>> 0; i < len; i++) {
+    for (var i = 0, len = toLength(src.length); i < len; i++) {
       if (!(i in src)) { continue; }
       var v = fn.call(thisArg, src[i], i, src);
       if (Array.isArray(v)) { flatInto(out, v, 0); } else { out.push(v); }
