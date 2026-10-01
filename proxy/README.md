@@ -27,6 +27,11 @@ LG webOS has no HTTP proxy setting, so use **transparent mode** with the proxy m
      --allow-hosts '(^|\.)teliatv\.ee(:443)?$' -s proxy/transpile_addon.py
    ```
    `--allow-hosts` makes mitmproxy intercept only teliatv.ee; all other traffic (DRM licenses, CDNs, LG services) is forwarded without TLS interception.
+   **Keep the two host lists in sync:** a host must be in both `--allow-hosts` and `TRANSPILE_HOSTS` to be transpiled. For example, if Telia's scripts come from `cdn.example.net`:
+   ```bash
+   TRANSPILE_HOSTS=teliatv.ee,cdn.example.net mitmdump --mode transparent --showhost --listen-port 8080 \
+     --allow-hosts '(^|\.)(teliatv\.ee|cdn\.example\.net)(:443)?$' -s proxy/transpile_addon.py
+   ```
 2. On the TV: Settings > Network > (Wi-Fi or wired) > Edit, switch to manual IP, and set **Gateway** to the proxy machine's IP (keep IP, subnet and DNS as before).
 3. **Certificate (unverified):** mitmproxy re-signs teliatv.ee with its own CA (`~/.mitmproxy/mitmproxy-ca-cert.pem`), and the TV's web engine must trust it or every teliatv.ee request fails with a certificate error. How webOS's WebAppManager loads trusted CAs has not been verified; the root filesystem is read-only, so adding a CA likely means bind-mounting a modified CA bundle at boot. Without a trusted CA this proxy cannot work.
 4. **Clear the cache:** the broken bundle may already be cached. Open DevTools (`scripts/deploy.sh inspect`), tick **Network > Disable cache**, use **Application > Clear storage** (this also removes service workers), then reload. The addon strips `If-None-Match` / `If-Modified-Since` on teliatv.ee GETs so revalidation returns a full body instead of a 304.
