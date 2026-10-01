@@ -2,7 +2,8 @@
 # Phase 0 reconnaissance. Usage: scripts/recon.sh TV_IP
 set -euo pipefail
 TV="${1:?usage: recon.sh TV_IP}"
-ssh "root@$TV" bash -s <<'REMOTE'
+# webOS has no bash, only BusyBox sh
+ssh "root@$TV" sh -s <<'REMOTE'
 luna-send -n 1 -f luna://com.webos.service.tv.systemproperty/getSystemInfo \
   '{"keys":["modelName","firmwareVersion","sdkVersion"]}'
 luna-send -n 1 -f luna://com.webos.settingsservice/getSystemSettings \

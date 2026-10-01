@@ -22,6 +22,7 @@ If any of these fails, the dependable option is an Android TV / Google TV device
 | `probe/eme-probe.js` | DevTools snippet: Widevine / PlayReady availability |
 | `router/lg-update-block.dnsmasq.conf` | Router-level block of the LG update hosts |
 | `proxy/` | Optional mitmproxy + esbuild proxy for Chrome 68 syntax errors |
+| `tests/` | Smoke tests (`bash tests/scripts.sh` stubs ssh/ares, no TV needed) |
 
 ## Prerequisites
 
@@ -38,8 +39,10 @@ If any of these fails, the dependable option is an Android TV / Google TV device
 # 1. Recon (system info, region settings, opens the built-in browser on teliatv.ee)
 scripts/recon.sh TV_IP
 
-# 2. Register the TV (root SSH on port 22, not the Developer Mode account on 9922)
-scripts/deploy.sh setup TV_IP ~/.ssh/id_rsa
+# 2. Register the TV (root SSH on port 22, not the Developer Mode account on 9922).
+#    ares-cli only reads keys from ~/.ssh, so pass the key's file name.
+#    If the key has a passphrase, prefix with KEY_PASSPHRASE=...
+scripts/deploy.sh setup TV_IP id_rsa
 
 # 3. Build, install, launch, debug
 scripts/deploy.sh install
@@ -85,7 +88,7 @@ scripts/update-block.sh off TV_IP      # rollback (reboots)
 
 The block is not bulletproof, so also:
 
-- add `router/lg-update-block.dnsmasq.conf` to your router's dnsmasq / Pi-hole config;
+- add the lines from `router/lg-update-block.dnsmasq.conf` to your router's dnsmasq config. On Pi-hole v6, paste them into Settings > All settings > Misc > `misc.dnsmasq_lines` (v6 ignores `/etc/dnsmasq.d` unless `misc.etc_dnsmasq_d` is enabled);
 - turn off automatic updates in the TV menu (Settings > General > About this TV);
 - **don't block all of `lge.com`**: that breaks the Content Store, LG login and time sync;
 - check CanI.RootMy.TV for your model and firmware before accepting any update.
@@ -97,7 +100,7 @@ scripts/deploy.sh remove
 scripts/update-block.sh off TV_IP   # only if you want updates back
 ```
 
-To fully restore updates, also remove the router-side block: delete `router/lg-update-block.dnsmasq.conf` from your dnsmasq / Pi-hole config and reload DNS, and remove any manually added `snu|su|su-dev|su-ssl.lge.com` entries from the TV's `/etc/hosts`.
+To fully restore updates, also remove the router-side block: remove those lines from your dnsmasq config or Pi-hole's `misc.dnsmasq_lines` and reload DNS, and remove any manually added `snu|su|su-dev|su-ssl.lge.com` entries from the TV's `/etc/hosts`.
 
 If you changed the LG Services Country while experimenting, restore the original value and reboot. Changing region is not useful here: no store has a Telia app that works with an Estonian account on webOS 5.
 
