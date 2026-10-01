@@ -67,7 +67,7 @@ Set `DEVICE=name` to use a device name other than `tvroot`.
 2. **DRM:** paste `probe/eme-probe.js` into the console. Then play a channel with the Network tab open and note the manifest type (`.mpd` or `.m3u8`), the license URL and the license POST status. A 4xx alone does not prove the CDM was rejected: read the status and response body first. An expired login, missing entitlement, geo restriction, rate limit or malformed request can all return 4xx, so re-login and retry before concluding anything. Only a policy or device/CDM-not-allowed error in the response points to Telia refusing this TV's CDM, and no client-side trick will fix that.
 3. **Media and license processing:** `MEDIA_ERR_DECODE` points to codec, profile or robustness problems. A rejected `MediaKeySession.update()` is a different failure: the CDM refused the license response (invalid or incompatible license, session mismatch, or CDM policy), so debug it alongside step 2, not as a codec issue.
 4. **Login:** Smart-ID / Mobiil-ID confirm on your phone, so any browser that renders the page works.
-5. **Navigation:** arrow keys and OK arrive as normal keyboard events, but a desktop UI may still need the Magic Remote pointer.
+5. **Navigation:** arrow keys and OK arrive as normal keyboard events, but a desktop UI may still need the Magic Remote pointer. BACK is handled by webOS using the page's own history; check what it does on the first page (exit or nothing). REW/FF/STOP/CH± are re-sent as ArrowLeft/ArrowRight/Escape/PageUp/PageDown, and PLAY/PAUSE drive the largest playing `<video>`. To see what the TV actually sends, run `addEventListener('keydown', e => console.log(e.keyCode, e.key, e.code, e.isTrusted), true)` in the console.
 
 ### UA header variant
 

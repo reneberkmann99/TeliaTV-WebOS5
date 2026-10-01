@@ -9,6 +9,5 @@
   "largeIcon": "largeIcon.png",
   "resolution": "1920x1080",
   "inspectable": true,
-  "disableBackHistoryAPI": true,
   "noSplashOnLaunch": true
 }
