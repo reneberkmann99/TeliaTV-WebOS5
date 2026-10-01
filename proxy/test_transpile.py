@@ -28,6 +28,7 @@ check(not t.host_allowed("evilteliatv.ee") and not t.host_allowed("example.com")
 check(t.is_js("application/javascript; charset=utf-8") and not t.is_js("text/html"), "content-type check")
 
 # LRU is bounded by bytes and evicts the oldest entries
+t.ENTRY_OVERHEAD = 0
 reset_cache(10)
 for i in range(5):
     t._cache_put(str(i), b"xxxx")
@@ -37,6 +38,13 @@ check("big" not in t._cache, "oversized entry not cached")
 # Replacing an entry doesn't double-count its size
 t._cache_put("4", b"yy")
 check(t._cache_bytes == 6, ("replace accounting", t._cache_bytes))
+# Cached failures (None) count towards the limit too, so they get evicted
+t.ENTRY_OVERHEAD = 100
+reset_cache(1000)
+for i in range(50):
+    t._cache_put("fail%d" % i, None)
+check(len(t._cache) == 10 and t._cache_bytes == 1000, ("failures bounded", len(t._cache), t._cache_bytes))
+t.ENTRY_OVERHEAD = 128
 reset_cache()
 
 

@@ -42,8 +42,12 @@ def _semaphore():
     return _sem
 
 
+# Accounted per entry on top of the output, so cached failures (None) also count towards the limit.
+ENTRY_OVERHEAD = 128
+
+
 def _size(out):
-    return len(out) if out else 0
+    return (len(out) if out else 0) + ENTRY_OVERHEAD
 
 
 def _cache_put(key, out):
