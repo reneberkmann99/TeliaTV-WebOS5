@@ -100,6 +100,13 @@ test('fromEntries', () => {
   const throwingNext = { [Symbol.iterator]() { return { next() { throw new Error('boom'); }, return() { closedOnNext = true; return {}; } }; } };
   assert.throws(() => Object.fromEntries(throwingNext), /boom/);
   assert.ok(closedOnNext, 'iterator closed when next() throws');
+  let retReads = 0, cleaned = false;
+  const retOnce = { [Symbol.iterator]() {
+    return { next: () => ({ value: 'bad', done: false }),
+      get return() { retReads++; return retReads === 1 ? () => { cleaned = true; return {}; } : undefined; } };
+  } };
+  assert.throws(() => Object.fromEntries(retOnce), TypeError);
+  assert.ok(cleaned && retReads === 1, 'return read once and called');
   const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
   assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
   assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });

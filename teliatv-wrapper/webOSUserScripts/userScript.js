@@ -73,7 +73,10 @@
       }
     } catch (e) {
       // Close the iterator on any error, including from next(); this matches Chrome's native behaviour.
-      try { if (typeof it['return'] === 'function') { it['return'](); } } catch (ignored) {}
+      try {
+        var ret = it['return'];  // read once
+        if (typeof ret === 'function') { ret.call(it); }
+      } catch (ignored) {}
       throw e;
     }
     return o;
