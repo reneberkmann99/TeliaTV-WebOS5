@@ -31,7 +31,11 @@ let failures = 0;
 function test(name, fn) {
   try { fn(); console.log('ok  ', name); } catch (e) { failures++; console.log('FAIL', name, '\n     ', e.message); }
 }
-const trusted = (keyCode, key) => ({ keyCode, key, isTrusted: true, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } });
+const trusted = (keyCode, key) => ({
+  keyCode, key, isTrusted: true, defaultPrevented: false, stopped: false,
+  preventDefault() { this.defaultPrevented = true; },
+  stopImmediatePropagation() { this.stopped = true; },
+});
 
 test('polyfills are not enumerable', () => {
   const keys = []; for (const k in ['a', 'b']) keys.push(k);
@@ -135,10 +139,14 @@ test('mapped keys carry key, code, keyCode and which', () => {
 
 test('no re-send when the native key already matches (CH+ as PageUp)', () => {
   dispatched.length = 0;
-  listener(trusted(33, 'PageUp'));
+  const native = trusted(33, 'PageUp');
+  listener(native);
   assert.strictEqual(dispatched.length, 0);
-  listener(trusted(33, 'Unidentified'));
+  assert.strictEqual(native.stopped, false, 'a native event that already matches is left alone');
+  const unidentified = trusted(33, 'Unidentified');
+  listener(unidentified);
   assert.strictEqual(dispatched.length, 1);
+  assert.ok(unidentified.stopped && unidentified.defaultPrevented, 'original is suppressed when re-sent');
   // Normalized key but LG keyCode: keyCode-based handlers still need the remapped event
   listener(trusted(412, 'ArrowLeft'));
   assert.strictEqual(dispatched.length, 2);

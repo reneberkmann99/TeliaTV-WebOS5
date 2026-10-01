@@ -132,6 +132,10 @@
     // to avoid a double action. `code` isn't compared: it is often empty on TV remotes, and re-sending
     // would then fire key- and keyCode-based handlers twice.
     if (!k || (ev.key === k.key && ev.keyCode === k.keyCode)) { return; }
+    // Replace the original event with the mapped one, so handlers see exactly one keydown per press.
+    // This listener runs in the capture phase on document, before the event reaches the page.
+    ev.stopImmediatePropagation();
+    ev.preventDefault();
     sendKey(document.activeElement || document.body, k);
   }, true);
 })();
