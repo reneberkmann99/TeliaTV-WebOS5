@@ -79,6 +79,10 @@ test('flat is linear (40k one-element arrays < 200 ms)', () => {
 test('fromEntries', () => {
   assert.deepStrictEqual(Object.fromEntries(new Map([['a', 1], ['b', 2]])), { a: 1, b: 2 });
   assert.deepStrictEqual(Object.fromEntries([['x', 3]]), { x: 3 });
+  const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
+  assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
+  assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });
+  assert.strictEqual(evil.polluted, undefined);
 });
 
 test('BACK (461) is left to webOS', () => {

@@ -56,7 +56,10 @@
   });
   define(Object, 'fromEntries', function (entries) {
     var o = {};
-    Array.from(entries, function (p) { o[p[0]] = p[1]; });
+    Array.from(entries, function (p) {
+      // defineProperty, not assignment: a "__proto__" key must become an own property, not set the prototype.
+      Object.defineProperty(o, p[0], { value: p[1], writable: true, enumerable: true, configurable: true });
+    });
     return o;
   });
 
