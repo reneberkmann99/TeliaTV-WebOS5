@@ -56,6 +56,8 @@ test('flatMap matches native', () => {
   const f = (x, i) => (x % 2 ? [x, [i]] : []);
   const arr = [1, 2, 3, , 5];
   assert.deepStrictEqual(Array.prototype.flatMap.call(arr, f), native.flatMap.call(arr, f));
+  const growing = [1, 2];
+  assert.deepStrictEqual(growing.flatMap((x) => { growing.push(x); return [x]; }), [1, 2], 'length snapshotted');
   const self = { k: 10 };
   assert.deepStrictEqual([1].flatMap(function (x) { return [x + this.k]; }, self), [11]);
 });

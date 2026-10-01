@@ -18,7 +18,8 @@
   // Appends the elements of `src` to `out`, flattening nested arrays up to `depth`.
   // Holes are skipped, as in the native flat().
   function flatInto(out, src, depth) {
-    for (var i = 0; i < src.length; i++) {
+    // Length is read once, as in the native method, so a source that grows during the loop can't loop forever.
+    for (var i = 0, len = src.length >>> 0; i < len; i++) {
       if (!(i in src)) { continue; }
       var v = src[i];
       if (depth > 0 && Array.isArray(v)) { flatInto(out, v, depth - 1); } else { out.push(v); }
@@ -32,7 +33,7 @@
   define(Array.prototype, 'flatMap', function (fn, thisArg) {
     var src = Object(this);
     var out = [];
-    for (var i = 0; i < src.length; i++) {
+    for (var i = 0, len = src.length >>> 0; i < len; i++) {
       if (!(i in src)) { continue; }
       var v = fn.call(thisArg, src[i], i, src);
       if (Array.isArray(v)) { flatInto(out, v, 0); } else { out.push(v); }
