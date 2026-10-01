@@ -106,8 +106,10 @@
       return;
     }
     var k = map[ev.keyCode];
-    // Skip if the TV already delivers this key natively (e.g. CH+ as PageUp), to avoid a double action.
-    if (!k || ev.key === k.key) { return; }
+    // Skip only if the TV already delivers this exact key natively (e.g. CH+ as key PageUp with keyCode 33),
+    // to avoid a double action. `code` isn't compared: it is often empty on TV remotes, and re-sending
+    // would then fire key- and keyCode-based handlers twice.
+    if (!k || (ev.key === k.key && ev.keyCode === k.keyCode)) { return; }
     sendKey(document.activeElement || document.body, k);
   }, true);
 })();

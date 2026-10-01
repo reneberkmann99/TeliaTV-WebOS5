@@ -107,6 +107,10 @@ test('no re-send when the native key already matches (CH+ as PageUp)', () => {
   assert.strictEqual(dispatched.length, 0);
   listener(trusted(33, 'Unidentified'));
   assert.strictEqual(dispatched.length, 1);
+  // Normalized key but LG keyCode: keyCode-based handlers still need the remapped event
+  listener(trusted(412, 'ArrowLeft'));
+  assert.strictEqual(dispatched.length, 2);
+  assert.strictEqual(dispatched[1].keyCode, 37);
 });
 
 test('synthetic events are ignored', () => {
