@@ -104,6 +104,23 @@ check(results == [b"shared"] * 3, results)
 check(open(counter).read().count("run") == 1, "one esbuild run for identical scripts")
 check(ticks >= 5, ("event loop kept running", ticks))
 
+
+
+# Cancelling one flow doesn't fail the others sharing the same run
+async def cancel_one():
+    a = asyncio.ensure_future(t.transpile(b"cancel-me"))
+    b = asyncio.ensure_future(t.transpile(b"cancel-me"))
+    await asyncio.sleep(0.1)
+    a.cancel()
+    return await b, a.cancelled()
+
+
+reset_cache()
+t.ESBUILD, t.TIMEOUT = stub("sleep 0.5\ncat\n"), 5
+result, a_cancelled = asyncio.run(cancel_one())
+check(a_cancelled and result == b"cancel-me", ("peer survives cancellation", result, a_cancelled))
+check(not t._inflight and t._cache.get(next(iter(t._cache))) == b"cancel-me", "result cached, inflight cleared")
+
 t.ESBUILD, t.TIMEOUT = real_esbuild, 60
 reset_cache()
 if shutil.which(t.ESBUILD):

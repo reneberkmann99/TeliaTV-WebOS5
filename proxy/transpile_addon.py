@@ -74,16 +74,34 @@ async def _run_esbuild(source):
     try:
         out, _ = await asyncio.wait_for(proc.communicate(source), TIMEOUT)
     except asyncio.TimeoutError:
-        try:
-            if hasattr(os, "killpg"):
-                os.killpg(proc.pid, signal.SIGKILL)
-            else:  # Windows: no process groups
-                proc.kill()
-        except ProcessLookupError:
-            pass
-        await proc.wait()
+        await _kill(proc)
         return None, True
+    except asyncio.CancelledError:  # e.g. proxy shutting down: don't leave esbuild running
+        await _kill(proc)
+        raise
     return (out if proc.returncode == 0 and out else None), True
+
+
+async def _kill(proc):
+    try:
+        if hasattr(os, "killpg"):
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:  # Windows: no process groups
+            proc.kill()
+    except ProcessLookupError:
+        pass
+    await proc.wait()
+
+
+async def _job(key, source):
+    """One esbuild run shared by every flow that requested this script."""
+    try:
+        out, cacheable = await _run_esbuild(source)
+        if cacheable:
+            _cache_put(key, out)
+        return out
+    finally:
+        _inflight.pop(key, None)
 
 
 async def transpile(source):
@@ -95,18 +113,11 @@ async def transpile(source):
     if key in _cache:
         _cache.move_to_end(key)
         return _cache[key]
-    if key in _inflight:
-        out, _ = await _inflight[key]
-        return out
-    task = asyncio.ensure_future(_run_esbuild(source))
-    _inflight[key] = task
-    try:
-        out, cacheable = await task
-    finally:
-        del _inflight[key]
-    if cacheable:
-        _cache_put(key, out)
-    return out
+    task = _inflight.get(key)
+    if task is None:
+        task = _inflight[key] = asyncio.ensure_future(_job(key, source))
+    # shield: if one flow is cancelled (client aborted), the shared run keeps going for the others.
+    return await asyncio.shield(task)
 
 
 def request(flow):
