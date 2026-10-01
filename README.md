@@ -22,7 +22,7 @@ If any of these fails, the dependable option is an Android TV / Google TV device
 | `probe/eme-probe.js` | DevTools snippet: Widevine / PlayReady availability |
 | `router/lg-update-block.dnsmasq.conf` | Router-level block of the LG update hosts |
 | `proxy/` | Optional mitmproxy + esbuild proxy for Chrome 68 syntax errors |
-| `tests/` | Smoke tests (`bash tests/scripts.sh` stubs ssh/ares, no TV needed) |
+| `tests/` | Tests, no TV needed: `bash tests/scripts.sh` (stubs ssh/ares) and `node tests/userscript.test.js` |
 
 ## Prerequisites
 
