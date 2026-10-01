@@ -19,6 +19,8 @@ TARGET = os.environ.get("TRANSPILE_TARGET", "chrome68")
 HOSTS = tuple(h.strip().lower() for h in os.environ.get("TRANSPILE_HOSTS", "teliatv.ee").split(",") if h.strip())
 MAX_BYTES = int(os.environ.get("TRANSPILE_MAX_BYTES", str(20 * 1024 * 1024)))
 TIMEOUT = float(os.environ.get("TRANSPILE_TIMEOUT", "60"))
+# Max esbuild processes at once (each can use a lot of CPU and memory on a small proxy host).
+JOBS = max(1, int(os.environ.get("TRANSPILE_JOBS", str(min(4, os.cpu_count() or 1)))))
 
 CACHE_MAX_BYTES = int(os.environ.get("TRANSPILE_CACHE_BYTES", str(64 * 1024 * 1024)))
 
@@ -27,6 +29,17 @@ _cache = OrderedDict()
 _cache_bytes = 0
 # Transpiles in progress, so concurrent requests for the same script share one esbuild run.
 _inflight = {}
+_sem = None
+_sem_loop = None
+
+
+def _semaphore():
+    """Semaphore limiting concurrent esbuild runs, created for the running event loop."""
+    global _sem, _sem_loop
+    loop = asyncio.get_running_loop()
+    if _sem is None or _sem_loop is not loop:
+        _sem, _sem_loop = asyncio.Semaphore(JOBS), loop
+    return _sem
 
 
 def _size(out):
@@ -96,7 +109,8 @@ async def _kill(proc):
 async def _job(key, source):
     """One esbuild run shared by every flow that requested this script."""
     try:
-        out, cacheable = await _run_esbuild(source)
+        async with _semaphore():  # the timeout starts once a slot is free, not while queued
+            out, cacheable = await _run_esbuild(source)
         if cacheable:
             _cache_put(key, out)
         return out

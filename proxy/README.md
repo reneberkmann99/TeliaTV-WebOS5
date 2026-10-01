@@ -11,7 +11,7 @@ pip install mitmproxy && npm i -g esbuild
 python3 proxy/test_transpile.py   # quick self-test
 ```
 
-Environment: `TRANSPILE_HOSTS` (comma-separated host suffixes), `TRANSPILE_TARGET` (default `chrome68`), `TRANSPILE_TIMEOUT` (seconds, default 60), `TRANSPILE_MAX_BYTES`, `TRANSPILE_CACHE_BYTES` (LRU cache size, default 64 MiB), `ESBUILD` (binary path).
+Environment: `TRANSPILE_HOSTS` (comma-separated host suffixes), `TRANSPILE_TARGET` (default `chrome68`), `TRANSPILE_TIMEOUT` (seconds, default 60), `TRANSPILE_JOBS` (max concurrent esbuild runs, default min(4, CPUs)), `TRANSPILE_MAX_BYTES`, `TRANSPILE_CACHE_BYTES` (LRU cache size, default 64 MiB), `ESBUILD` (binary path).
 
 ## Route the TV through it
 

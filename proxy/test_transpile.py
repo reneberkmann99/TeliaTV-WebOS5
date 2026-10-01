@@ -121,6 +121,18 @@ result, a_cancelled = asyncio.run(cancel_one())
 check(a_cancelled and result == b"cancel-me", ("peer survives cancellation", result, a_cancelled))
 check(not t._inflight and t._cache.get(next(iter(t._cache))) == b"cancel-me", "result cached, inflight cleared")
 
+# Distinct scripts are limited to TRANSPILE_JOBS concurrent esbuild runs
+async def distinct(n):
+    return await asyncio.gather(*(t.transpile(b"job%d" % i) for i in range(n)))
+
+
+reset_cache()
+log = os.path.join(tempfile.mkdtemp(), "jobs")
+t.ESBUILD, t.TIMEOUT, t.JOBS = stub(f"echo start >> {log}\nsleep 0.2\necho end >> {log}\ncat\n"), 5, 1
+check(asyncio.run(distinct(3)) == [b"job0", b"job1", b"job2"], "distinct jobs complete")
+check(open(log).read().split() == ["start", "end"] * 3, ("one esbuild at a time", open(log).read().split()))
+t.JOBS = 4
+
 t.ESBUILD, t.TIMEOUT = real_esbuild, 60
 reset_cache()
 if shutil.which(t.ESBUILD):
