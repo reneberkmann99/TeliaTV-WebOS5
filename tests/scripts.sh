@@ -34,7 +34,10 @@ expect() {  # expect DESCRIPTION FIXED-STRING
   if grep -qF -- "$2" "$LOG"; then echo "ok   $1"; else echo "FAIL $1 (wanted: $2)"; sed 's/^/     /' "$LOG"; fails=$((fails+1)); fi
 }
 
-bash -n "$ROOT"/scripts/*.sh && echo "ok   bash -n scripts/*.sh"
+# bash -n only checks its first file argument, so check each script separately.
+for f in "$ROOT"/scripts/*.sh; do
+  if bash -n "$f"; then echo "ok   bash -n scripts/${f##*/}"; else echo "FAIL bash -n scripts/${f##*/}"; fails=$((fails+1)); fi
+done
 
 run bash "$ROOT/scripts/update-block.sh" on 10.0.0.5
 expect "update-block on"     "ssh [root@10.0.0.5] [touch /var/luna/preferences/webosbrew_block_updates && reboot]"
