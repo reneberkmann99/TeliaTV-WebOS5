@@ -2,12 +2,13 @@
 # Smoke test for scripts/*.sh. ssh and ares-* are replaced by stubs that log their
 # arguments (and stdin), so nothing touches a real TV. Run: bash tests/scripts.sh
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SRC="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
-# Only clean up dist/ if this test created it (the install check builds into it).
-if [ -d "$ROOT/dist" ]; then KEEP_DIST=1; else KEEP_DIST=0; fi
-cleanup() { rm -rf "$TMP"; if [ "$KEEP_DIST" = 0 ]; then rm -rf "$ROOT/dist"; fi; }
-trap cleanup EXIT
+trap 'rm -rf "$TMP"' EXIT
+# Run against a copy, so the install check never touches the real dist/.
+ROOT="$TMP/repo"
+mkdir -p "$ROOT"
+cp -R "$SRC/scripts" "$SRC/teliatv-wrapper" "$ROOT/"
 LOG="$TMP/log"
 mkdir -p "$TMP/bin" "$TMP/home/.ssh"
 touch "$TMP/home/.ssh/id_rsa"
