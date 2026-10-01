@@ -65,6 +65,7 @@
     try {
       for (;;) {
         var step = next.call(it);
+        if (Object(step) !== step) { throw new TypeError('Iterator result is not an object'); }
         if (step.done) { break; }
         var p = step.value;
         if (Object(p) !== p) { throw new TypeError('Object.fromEntries: entry is not an object'); }
