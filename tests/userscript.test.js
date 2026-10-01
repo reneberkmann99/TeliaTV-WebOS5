@@ -61,6 +61,8 @@ test('flatMap matches native', () => {
   assert.deepStrictEqual(Array.prototype.flatMap.call({ length: -1 }, (x) => x), [], 'negative length clamps to 0');
   assert.deepStrictEqual(Array.prototype.flat.call({ length: -1 }), [], 'negative length clamps to 0 (flat)');
   assert.throws(() => [].flatMap(null), TypeError, 'non-callable callback throws even when empty');
+  assert.throws(() => Array.prototype.flat.call(null), TypeError, 'flat on null receiver throws');
+  assert.throws(() => Array.prototype.flatMap.call(undefined, (x) => x), TypeError, 'flatMap on undefined receiver throws');
   const self = { k: 10 };
   assert.deepStrictEqual([1].flatMap(function (x) { return [x + this.k]; }, self), [11]);
 });

@@ -31,13 +31,21 @@
     }
     return out;
   }
+  // Strict mode keeps a null/undefined receiver as-is (sloppy mode would substitute window).
+  function toObject(value, method) {
+    if (value == null) { throw new TypeError('Array.prototype.' + method + ' called on null or undefined'); }
+    return Object(value);
+  }
   define(Array.prototype, 'flat', function (depth) {
+    'use strict';
+    var src = toObject(this, 'flat');
     var d = depth === undefined ? 1 : Math.trunc(Number(depth));
-    return flatInto([], Object(this), d > 0 ? d : 0);
+    return flatInto([], src, d > 0 ? d : 0);
   });
   define(Array.prototype, 'flatMap', function (fn, thisArg) {
+    'use strict';
+    var src = toObject(this, 'flatMap');
     if (typeof fn !== 'function') { throw new TypeError('flatMap callback must be a function'); }
-    var src = Object(this);
     var out = [];
     for (var i = 0, len = toLength(src.length); i < len; i++) {
       if (!(i in src)) { continue; }
