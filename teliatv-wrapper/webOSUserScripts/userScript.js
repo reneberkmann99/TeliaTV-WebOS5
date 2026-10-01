@@ -60,6 +60,7 @@
     var method = entries == null ? undefined : entries[Symbol.iterator];
     if (typeof method !== 'function') { throw new TypeError('Object.fromEntries requires an iterable'); }
     var it = method.call(entries);
+    if (Object(it) !== it) { throw new TypeError('Result of the Symbol.iterator method is not an object'); }
     var next = it.next;  // read once, like native
     var o = {};
     try {

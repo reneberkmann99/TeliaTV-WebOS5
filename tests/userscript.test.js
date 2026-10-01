@@ -113,6 +113,7 @@ test('fromEntries', () => {
   assert.ok(cleaned && retReads === 1, 'return read once and called');
   const primitiveStep = { [Symbol.iterator]() { return { next: () => 1 }; } };
   assert.throws(() => Object.fromEntries(primitiveStep), TypeError, 'primitive iterator result');
+  assert.throws(() => Object.fromEntries({ [Symbol.iterator]: () => 1 }), TypeError, 'primitive iterator');
   const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
   assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
   assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });
