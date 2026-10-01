@@ -1,5 +1,5 @@
 // Paste into the DevTools console of the running wrapper (ares-inspect).
-// Reports which Widevine / PlayReady robustness levels EME grants.
+// Reports which Widevine / PlayReady video robustness levels EME grants.
 (function () {
   if (!navigator.requestMediaKeySystemAccess) {
     console.log('NO EME: navigator.requestMediaKeySystemAccess is missing (insecure context or disabled)');
@@ -9,7 +9,9 @@
     return [{
       initDataTypes: ['cenc'],
       videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.640028"', robustness: robustness }],
-      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: robustness }]
+      // Audio stays at default robustness: hardware levels are usually video-only, and EME rejects the
+      // whole config if audio can't meet them, which would hide the video result.
+      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: '' }]
     }];
   }
   var probes = [
