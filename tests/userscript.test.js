@@ -79,6 +79,9 @@ test('flat is linear (40k one-element arrays < 200 ms)', () => {
 test('fromEntries', () => {
   assert.deepStrictEqual(Object.fromEntries(new Map([['a', 1], ['b', 2]])), { a: 1, b: 2 });
   assert.deepStrictEqual(Object.fromEntries([['x', 3]]), { x: 3 });
+  assert.throws(() => Object.fromEntries({ 0: ['x', 1], length: 1 }), TypeError, 'array-like is not iterable');
+  assert.throws(() => Object.fromEntries(null), TypeError, 'null entries');
+  assert.throws(() => Object.fromEntries(['ab']), TypeError, 'primitive entry');
   const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
   assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
   assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });
