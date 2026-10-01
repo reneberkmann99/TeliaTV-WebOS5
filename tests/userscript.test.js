@@ -82,6 +82,13 @@ test('fromEntries', () => {
   assert.throws(() => Object.fromEntries({ 0: ['x', 1], length: 1 }), TypeError, 'array-like is not iterable');
   assert.throws(() => Object.fromEntries(null), TypeError, 'null entries');
   assert.throws(() => Object.fromEntries(['ab']), TypeError, 'primitive entry');
+  let reads = 0;
+  const once = { get [Symbol.iterator]() { reads++; return reads === 1 ? function* () { yield ['k', 1]; } : undefined; } };
+  assert.deepStrictEqual(Object.fromEntries(once), { k: 1 }, 'iterator method read once');
+  let closed = false;
+  const closing = { [Symbol.iterator]() { return { next: () => ({ value: 'bad', done: false }), return: () => { closed = true; return {}; } }; } };
+  assert.throws(() => Object.fromEntries(closing), TypeError);
+  assert.ok(closed, 'iterator closed on error');
   const evil = Object.fromEntries([['__proto__', { polluted: true }]]);
   assert.strictEqual(Object.getPrototypeOf(evil), Object.prototype, '__proto__ key does not change the prototype');
   assert.deepStrictEqual(Object.getOwnPropertyDescriptor(evil, '__proto__').value, { polluted: true });

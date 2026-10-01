@@ -56,15 +56,23 @@
   });
   define(Object, 'fromEntries', function (entries) {
     // Like native: entries must be iterable (no array-like fallback) and each entry an object.
-    if (entries == null || typeof entries[Symbol.iterator] !== 'function') {
-      throw new TypeError('Object.fromEntries requires an iterable');
-    }
+    // The iterator method is read once and then used directly.
+    var method = entries == null ? undefined : entries[Symbol.iterator];
+    if (typeof method !== 'function') { throw new TypeError('Object.fromEntries requires an iterable'); }
+    var it = method.call(entries);
     var o = {};
-    Array.from(entries, function (p) {
-      if (Object(p) !== p) { throw new TypeError('Object.fromEntries: entry is not an object'); }
-      // defineProperty, not assignment: a "__proto__" key must become an own property, not set the prototype.
-      Object.defineProperty(o, p[0], { value: p[1], writable: true, enumerable: true, configurable: true });
-    });
+    var step;
+    while (!(step = it.next()).done) {
+      var p = step.value;
+      try {
+        if (Object(p) !== p) { throw new TypeError('Object.fromEntries: entry is not an object'); }
+        // defineProperty, not assignment: a "__proto__" key must become an own property, not set the prototype.
+        Object.defineProperty(o, p[0], { value: p[1], writable: true, enumerable: true, configurable: true });
+      } catch (e) {
+        if (typeof it['return'] === 'function') { it['return'](); }  // close the iterator, like native
+        throw e;
+      }
+    }
     return o;
   });
 
